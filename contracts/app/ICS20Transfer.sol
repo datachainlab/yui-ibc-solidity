@@ -28,7 +28,7 @@ abstract contract ICS20Transfer is Context, IICS20Transfer {
     function sendTransfer(
         string calldata denom,
         uint64 amount,
-        address receiver,
+        string calldata receiver,
         string calldata sourcePort,
         string calldata sourceChannel,
         uint64 timeoutHeight
@@ -38,36 +38,33 @@ abstract contract ICS20Transfer is Context, IICS20Transfer {
         } else {
             require(_burn(_msgSender(), denom, amount));
         }
-
         _sendPacket(
-            FungibleTokenPacketData.Data({
-                denom: denom,
-                amount: amount,
-                sender: abi.encodePacked(_msgSender()),
-                receiver: abi.encodePacked(receiver)
-            }),
-            sourcePort,
-            sourceChannel,
-            timeoutHeight
-        );
+                    FungibleTokenPacketData.Data({
+                        denom: denom,
+                        amount: amount,
+                        sender: strings.addressToString(_msgSender()),
+                        receiver: receiver}),
+                    sourcePort,
+                    sourceChannel,
+                    timeoutHeight);
     }
 
     /// Module callbacks ///
 
     function onRecvPacket(Packet.Data calldata packet) external virtual override returns (bytes memory acknowledgement) {
-        FungibleTokenPacketData.Data memory data = FungibleTokenPacketData.decode(packet.data);
+        FungibleTokenPacketData.Data memory data = FungibleTokenPacketData.decode(packet.data); // packet.data = JSON
         strings.slice memory denom = data.denom.toSlice();
         strings.slice memory trimedDenom = data.denom.toSlice().beyond(
             _makeDenomPrefix(packet.source_port, packet.source_channel)
         );
         if (!denom.equals(trimedDenom)) { // receiver is source chain
             return _newAcknowledgement(
-                _transferFrom(_getEscrowAddress(packet.destination_channel), data.receiver.toAddress(), trimedDenom.toString(), data.amount)
+                _transferFrom(_getEscrowAddress(packet.destination_channel), data.receiver.parseAddr(), trimedDenom.toString(), data.amount)
             );
         } else {
             string memory prefixedDenom = _makeDenomPrefix(packet.destination_port, packet.destination_channel).concat(denom);
             return _newAcknowledgement(
-                _mint(data.receiver.toAddress(), prefixedDenom, data.amount)
+                _mint(data.receiver.parseAddr(), prefixedDenom, data.amount)
             );
         }
     }
@@ -134,7 +131,7 @@ abstract contract ICS20Transfer is Context, IICS20Transfer {
         }
         return acknowledgement;
     }
-    
+
     function _isSuccessAcknowledgement(bytes memory acknowledgement) virtual internal pure returns (bool) {
         require(acknowledgement.length == 1);
         return acknowledgement[0] == 0x01;
@@ -142,9 +139,9 @@ abstract contract ICS20Transfer is Context, IICS20Transfer {
 
     function _refundTokens(FungibleTokenPacketData.Data memory data, string memory sourcePort, string memory sourceChannel) virtual internal {
         if (!data.denom.toSlice().startsWith(_makeDenomPrefix(sourcePort, sourceChannel))) { // sender was source chain
-            require(_transferFrom(_getEscrowAddress(sourceChannel), data.sender.toAddress(), data.denom, data.amount));
+            require(_transferFrom(_getEscrowAddress(sourceChannel), data.sender.parseAddr(), data.denom, data.amount));
         } else {
-            require(_mint(data.sender.toAddress(), data.denom, data.amount));
+            require(_mint(data.sender.parseAddr(), data.denom, data.amount));
         }
     }
 
