@@ -6,16 +6,22 @@
     "test": "test"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^4.8.0",
     "@truffle/hdwallet-provider": "^2.0.15",
     "ejs": "^3.1.7",
-    "@openzeppelin/contracts": "^4.8.0",
     "truffle": "5.6.6",
     "truffle-contract-size": "^2.0.1"
   },
   "scripts": {
     "postinstall": "truffle compile",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "gas-report": "truffle exec ./scripts/gas-report.js --network development"
   },
   "author": "Jun Kimura",
-  "license": "Apache2.0"
+  "license": "Apache2.0",
+  "devDependencies": {
+    "csv-stringify": "^6.2.2",
+    "ethereum-input-data-decoder": "^0.4.2",
+    "rlp": "^3.0.0"
+  }
 }
